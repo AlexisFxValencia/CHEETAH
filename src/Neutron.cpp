@@ -5,8 +5,8 @@ Neutron::Neutron() {
     this->position = Vector3(0,0,0);
     this->direction = Vector3(M_PI / 4, M_PI / 4, 0.0);
     this->energy = 2;
-    this->max_boundaries = Vector3(34,19, 30);
-    this->min_boundaries = Vector3(0,0,0);
+    this->max_boundaries = Vector3(34.0, 19.0, 30);
+    this->min_boundaries = Vector3(0.0, 0.0, 0.0);
     this->previous_position = position;
 
     is_source = false;
@@ -30,17 +30,9 @@ Neutron::Neutron(Vector3 position, Vector3 direction, double energy, Vector3 max
 
 
 void Neutron::set_random_position() {
-    double alea_1 = ((double)rand()/(RAND_MAX + 1));
-    this->position.x = alea_1 * (max_boundaries.x - min_boundaries.x) + min_boundaries.x;
-    this->previous_position.x = position.x;
-
-    double alea_2 = ((double)rand() / (RAND_MAX + 1));
-    this->position.y = alea_2 * (max_boundaries.y - min_boundaries.y) + min_boundaries.y;
-    this->previous_position.y = position.y;
-
-    double alea_3 = ((double)rand() / (RAND_MAX + 1));
-    this->position.z = alea_3 * (max_boundaries.z - min_boundaries.z) + min_boundaries.z;
-    this->previous_position.z = position.z;
+    double alea = ((double)rand()/RAND_MAX);
+    Vector3 diff = max_boundaries - min_boundaries;
+    this-> position = (diff * alea) + min_boundaries;
 }
 
 
