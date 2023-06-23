@@ -8,9 +8,6 @@
 #include <math.h>
 #include "Vector3.h"
 
-
-
-
 using namespace std;
 
 class Neutron

@@ -5,5 +5,6 @@
 
 #include <iostream>
 #include <mpi.h>
+#include <vector>
 
 // TODO: Référencez ici les en-têtes supplémentaires nécessaires à votre programme.
