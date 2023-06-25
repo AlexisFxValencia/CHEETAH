@@ -3,6 +3,7 @@
 #include "Neutron.h"
 using namespace std;
 
+
 vector<Vector3> generate_trajectory(int rank){
 	Neutron neutron = Neutron();
 	neutron.position.x = (double)100*rank;

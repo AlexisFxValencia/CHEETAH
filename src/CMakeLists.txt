@@ -1,4 +1,4 @@
-﻿add_library(CHEETAH_lib "Neutron.cpp" "Neutron.h" "Vector3.cpp" "Vector3.h")
+﻿add_library(CHEETAH_lib "Neutron.cpp" "Neutron.h" "Vector3.cpp" "Vector3.h" "Serializer.cpp" "Serializer.h" "Trajectory.cpp" "Trajectory.h")
 add_executable (CHEETAH "CHEETAH.cpp" "CHEETAH.h" )
 target_link_libraries(CHEETAH PRIVATE CHEETAH_lib)
 
