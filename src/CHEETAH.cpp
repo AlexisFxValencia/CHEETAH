@@ -1,23 +1,7 @@
 ﻿// CHEETAH.cpp : définit le point d'entrée de l'application.
 #include "CHEETAH.h"
-#include "Neutron.h"
+#include <cstring> 
 using namespace std;
-
-
-vector<Vector3> generate_trajectory(int rank){
-	Neutron neutron = Neutron();
-	neutron.position.x = (double)100*rank;
-	neutron.position.y = (double)100*rank + 1;
-	neutron.position.z = (double)100*rank + 2;
-
-	vector<Vector3> local_trajectory_vector;
-	local_trajectory_vector.push_back(neutron.position);
-	local_trajectory_vector.push_back(neutron.position);
-	if (rank ==2){
-		local_trajectory_vector.push_back(neutron.position);
-	}
-	return local_trajectory_vector;
-}
 
 
 int main(int argc, char *argv[])
@@ -27,17 +11,24 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &nb_processes);
 	
-	vector<Vector3> local_trajectory_vector = generate_trajectory(rank);
-    int local_size = local_trajectory_vector.size();	
-	Vector3* local_trajectory = new Vector3[local_size];	
-	for (int i = 0; i < local_size; i++) {
-		local_trajectory[i] = local_trajectory_vector[i];
-	}
+	Trajectory trajectory;
+	trajectory.modify(rank);
 	
+	Serializer srlz = Serializer();
+	int serializedSize = srlz.calculateSerializedSize(trajectory);
+	int local_size = serializedSize;
 
+	char* buffer = new char[serializedSize];
+	srlz.serialize(trajectory, buffer);
+	
+	Trajectory trajectory_end;
+	srlz.deserialize(buffer, trajectory_end);
+	
+	
 	// Gather the sizes of local trajectories on all processes
     int local_sizes[nb_processes];
     MPI_Gather(&local_size, 1, MPI_INT, local_sizes, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
 
     // Calculate the displacements for Gatherv
     int displacements[nb_processes];
@@ -49,26 +40,30 @@ int main(int argc, char *argv[])
         }
     }
 
-	Vector3 all_trajectories[total_size];	
-    MPI_Datatype MPI_Vector3;
-    MPI_Type_contiguous(sizeof(Vector3), MPI_BYTE, &MPI_Vector3);
-    MPI_Type_commit(&MPI_Vector3);
-    MPI_Gatherv(local_trajectory, local_size, MPI_Vector3, all_trajectories, local_sizes, displacements, MPI_Vector3, 0, MPI_COMM_WORLD);
+	// Allocate a receive buffer in the main process
+    char* receivedBuffer = nullptr;
+    if (rank == 0) {
+        receivedBuffer = new char[total_size];
+    }
 
 
-	if (rank == 0) {
-		cout << "Array of objects:" << std::endl;
-		int count = 0;
+	MPI_Gatherv(buffer, local_size, MPI_CHAR, receivedBuffer, local_sizes, displacements, MPI_CHAR, 0, MPI_COMM_WORLD);
+
+	if (rank == 0){		
+		// Deserialize the received data
+		Trajectory* deserializedObjs = new Trajectory[nb_processes];
+		char* bufferPtr = receivedBuffer;
 		for (int i = 0; i < nb_processes; ++i) {
-			cout << "Process " << i << ":" << std::endl;
-			for (int j = count; j < count+local_sizes[i]; j++) {	
-				cout << " Position (x, y, z) : " << all_trajectories[j] << endl;
-			}			
-			count += local_sizes[i];
+			srlz.deserialize(bufferPtr, deserializedObjs[i]);
+			bufferPtr += local_sizes[i];
 		}
-		
+		// Print the deserialized objects
+        std::cout << "Deserialized objects:" << std::endl;
+        for (int j = 0; j < nb_processes; j++){
+			cout << deserializedObjs[j] << endl;
+		}
+
 	}
-	
 	
 
 	MPI_Finalize();

@@ -7,4 +7,8 @@
 #include <mpi.h>
 #include <vector>
 
+#include "Neutron.h"
+#include "Trajectory.h"
+#include "Serializer.h"
+
 // TODO: Référencez ici les en-têtes supplémentaires nécessaires à votre programme.
