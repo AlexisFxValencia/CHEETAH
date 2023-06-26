@@ -81,6 +81,7 @@ int main(int argc, char *argv[])
 			process_rank++;			
 		}
 	}
+	
 
 	int merged_sizes[NB_PROCESSES];
 	int total_size = 0;
@@ -117,35 +118,21 @@ int main(int argc, char *argv[])
 	memcpy(merged_buffer, buffer1, local_size1);
 	memcpy(merged_buffer + local_size1, buffer2, local_size2);
 
-	if (rank ==0){
-		//display_array(rank, merged_sizes, 4);
-		//cout << merged_size << endl;
-	}
 	MPI_Gatherv(merged_buffer, merged_size, MPI_CHAR, receivedBuffer, merged_sizes, displacements, MPI_CHAR, 0, MPI_COMM_WORLD);
-	
+		
 	if (rank == 0){	
 		char* bufferPtr = receivedBuffer;
-	}
-	/*
-	if (rank == 0){		
-		// Deserialize the received data
-		Trajectory* deserializedObjs = new Trajectory[NB_PROCESSES];
-		char* bufferPtr = receivedBuffer;
 		for (int i = 0; i < NB_PROCESSES; ++i) {
-			srlz.deserialize(bufferPtr, deserializedObjs[i]);
-			bufferPtr += local_sizes[i];
+			cout << "Process n " << i << " : " << endl;			
+			for (int j = 0; j < size_trajectories[i].nb_trajectories; j++){				
+				Trajectory trajectory_end;				
+				srlz.deserialize(bufferPtr, trajectory_end);		
+				bufferPtr += size_trajectories[i].trajectory_sizes[j];				
+				cout << trajectory_end << endl;				
+			}
 		}
-		// Print the deserialized objects
-        std::cout << "Deserialized objects:" << std::endl;
-        for (int j = 0; j < NB_PROCESSES; j++){
-			cout << deserializedObjs[j] << endl;
-		}
-
 	}
-	*/
-
-
-	
+		
 	MPI_Finalize();
 	
 	return 0;
