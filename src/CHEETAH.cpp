@@ -6,10 +6,10 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {	
-	int rank, nb_processes;	
+	int rank, NB_PROCESSES;	
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &nb_processes);
+    MPI_Comm_size(MPI_COMM_WORLD, &NB_PROCESSES);
 	
 	Trajectory trajectory;
 	trajectory.modify(rank);
@@ -25,15 +25,15 @@ int main(int argc, char *argv[])
 	
 	
 	// Gather the sizes of local trajectories on all processes
-    int local_sizes[nb_processes];
+    int local_sizes[NB_PROCESSES];
     MPI_Gather(&local_size, 1, MPI_INT, local_sizes, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
 
     // Calculate the displacements for Gatherv
-    int displacements[nb_processes];
+    int displacements[NB_PROCESSES];
     int total_size = 0;
     if (rank == 0) {
-        for (int i = 0; i < nb_processes; i++) {
+        for (int i = 0; i < NB_PROCESSES; i++) {
             displacements[i] = total_size;
             total_size += local_sizes[i];
         }
@@ -50,15 +50,15 @@ int main(int argc, char *argv[])
 
 	if (rank == 0){		
 		// Deserialize the received data
-		Trajectory* deserializedObjs = new Trajectory[nb_processes];
+		Trajectory* deserializedObjs = new Trajectory[NB_PROCESSES];
 		char* bufferPtr = receivedBuffer;
-		for (int i = 0; i < nb_processes; ++i) {
+		for (int i = 0; i < NB_PROCESSES; ++i) {
 			srlz.deserialize(bufferPtr, deserializedObjs[i]);
 			bufferPtr += local_sizes[i];
 		}
 		// Print the deserialized objects
         std::cout << "Deserialized objects:" << std::endl;
-        for (int j = 0; j < nb_processes; j++){
+        for (int j = 0; j < NB_PROCESSES; j++){
 			cout << deserializedObjs[j] << endl;
 		}
 
