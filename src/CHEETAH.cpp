@@ -9,15 +9,6 @@ struct SizeTrajectories{
 	SizeTrajectories(){
 		nb_trajectories = 0;		
 	};
-	/*
-	ostream& operator<<(ostream& out, const SizeTrajectories& st) {
-		out << st.nb_trajectories << endl;
-		for (int i = 0; i < st.nb_trajectories; i++){
-			out << " n°" << i << "  : " << st.trajectory_sizes[i] << endl;
-		}		
-		return out;
-	}
-	*/
 
 	void display(){
 		cout << "nb_trajectories for this batch = "<< this->nb_trajectories << endl;
@@ -73,50 +64,45 @@ int main(int argc, char *argv[])
     MPI_Gather(&local_sizes, 1*(NB_TRAJECTORIES+1), MPI_INT, batch_sizes, 1*(NB_TRAJECTORIES+1), MPI_INT, 0, MPI_COMM_WORLD);
 
 
-
 	SizeTrajectories size_trajectories[NB_PROCESSES];
-
-    // Calculate the displacements for Gatherv    
-	int merged_sizes[NB_PROCESSES];
-	int total_size = 0;
-	int displacements[NB_PROCESSES];
-    if (rank == 0) {		
+	if (rank == 0) {		
 		int matrix_index = 0;
 		int process_rank = 0;
 		while (matrix_index < matrix_size){
 			int nb_trajectories = batch_sizes[matrix_index];
 			int current_index = matrix_index;
 			matrix_index++;
-			size_trajectories[process_rank].nb_trajectories = nb_trajectories;
-			merged_sizes[process_rank] = 0;			
+			size_trajectories[process_rank].nb_trajectories = nb_trajectories;		
 			for (int j = 0; j < nb_trajectories; j++){
-				merged_sizes[process_rank] += batch_sizes[j + current_index + 1];
-				total_size += batch_sizes[j + current_index + 1];
-				int a = batch_sizes[j + current_index + 1];
-				size_trajectories[process_rank].trajectory_sizes.push_back(a);
+				int one_trajectory_size = batch_sizes[j + current_index + 1];
+				size_trajectories[process_rank].trajectory_sizes.push_back(one_trajectory_size);
 				matrix_index++;
 			}
-			process_rank++;
-			
-		}	
-		
-		if (rank ==0){
-			for (int i = 0; i < NB_PROCESSES; i++){
-				//cout << size_trajectories[i] << endl;
-				size_trajectories[i].display();
+			process_rank++;			
+		}
+	}
+
+	int merged_sizes[NB_PROCESSES];
+	int total_size = 0;
+	if (rank ==0){
+		for (int i = 0; i < NB_PROCESSES; i++){
+			merged_sizes[i] = 0;
+			for (int j = 0; j < size_trajectories[i].nb_trajectories; j++){
+				merged_sizes[i] += size_trajectories[i].trajectory_sizes[j];
+				total_size += size_trajectories[i].trajectory_sizes[j];
 			}
 		}
-		
+	}
+
+	int displacements[NB_PROCESSES];
+	if (rank == 0){
 		int sum = 0;
 		for (int j = 0; j < NB_PROCESSES; j++){
 			displacements[j] = sum;
 			sum += merged_sizes[j];
 		}
-    }
-	
-	//display_array(rank, displacements, 4);
-		
-	
+	}
+
 	
 
 	// Allocate a receive buffer in the main process
@@ -132,7 +118,7 @@ int main(int argc, char *argv[])
 	memcpy(merged_buffer + local_size1, buffer2, local_size2);
 
 	if (rank ==0){
-		display_array(rank, merged_sizes, 4);
+		//display_array(rank, merged_sizes, 4);
 		//cout << merged_size << endl;
 	}
 	MPI_Gatherv(merged_buffer, merged_size, MPI_CHAR, receivedBuffer, merged_sizes, displacements, MPI_CHAR, 0, MPI_COMM_WORLD);
