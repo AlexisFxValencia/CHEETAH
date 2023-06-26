@@ -33,12 +33,11 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &NB_PROCESSES);
 
-	int NB_SOURCES = 9;
+	int NB_SOURCES = 13;
 	int NB_TRAJECTORIES = NB_SOURCES/NB_PROCESSES;
 	if (rank == 0){
 		NB_TRAJECTORIES+= NB_SOURCES%NB_PROCESSES;
 	}
-	//cout << "rank : " << rank << " NB_TRAJECTORIES : "<< NB_TRAJECTORIES << endl;
 
 	Trajectory trajectories[NB_TRAJECTORIES];
 	for (int i = 0; i < NB_TRAJECTORIES; i++){
@@ -57,13 +56,6 @@ int main(int argc, char *argv[])
 		local_sizes[i+1] = srlz.calculateSerializedSize(trajectories[i]);
 	}
 	
-	/*
-	if (rank == 0){
-		for (int i = 0; i < NB_TRAJECTORIES+1; i++){
-			cout << "rank : " << rank << "local_sizes[i]  : " << local_sizes[i] << endl;
-		}
-	}
-	*/
 	int recvcounts[NB_PROCESSES];
 	if(rank == 0){
 		recvcounts[0] = (NB_SOURCES / NB_PROCESSES) + (NB_SOURCES % NB_PROCESSES);
@@ -81,11 +73,6 @@ int main(int argc, char *argv[])
 			displs[j] = sum;
 			sum += recvcounts[j];
 		}
-		/*
-		for (int l=0; l< NB_PROCESSES; l++){
-			cout << displs[l] << endl;
-		}
-		*/
 	}
 	
 
@@ -93,18 +80,18 @@ int main(int argc, char *argv[])
 	
 	int matrix_size = NB_SOURCES + NB_PROCESSES;
     int batch_sizes[matrix_size];
-	//cout << rank << " NB_TRAJECTORIES : " << NB_TRAJECTORIES << endl;
     MPI_Gatherv(&local_sizes, NB_TRAJECTORIES+1, MPI_INT, batch_sizes, recvcounts, displs, MPI_INT, 0, MPI_COMM_WORLD);
 
 	
 	SizeTrajectories size_trajectories[NB_PROCESSES];
 	
-	
+	/*
 	if (rank == 0){
 		for (int i = 0; i<10; i++){
 			cout << batch_sizes[i] << endl;
 		}
 	}
+	*/
 	
 	
 	
@@ -132,7 +119,7 @@ int main(int argc, char *argv[])
 			size_trajectories[i].display();
 		}
 	}
-	cout << endl;
+	
 
 	
 	
@@ -157,20 +144,34 @@ int main(int argc, char *argv[])
 			sum += merged_sizes[j];
 		}
 	}
-
-	/*
 	
-
+	if (rank == 0){
+		for (int k = 0; k < NB_PROCESSES; k++){
+			cout << "displacements[k]" << displacements[k] << endl;
+		}
+	}
+	
+	
+	
+	/*
 	char* buffer1 = new char[local_size1];
 	srlz.serialize(trajectory1, buffer1);
 	char* buffer2 = new char[local_size2];
 	srlz.serialize(trajectory2, buffer2);
-	
-	//Trajectory trajectory_end;
-	//srlz.deserialize(buffer, trajectory_end);
-	
-	
+	*/
 
+	char* buffers[NB_TRAJECTORIES];
+	for (int i = 0; i < NB_TRAJECTORIES; i++){
+		buffers[i] = new char[local_sizes[i+1]];
+		srlz.serialize(trajectories[i], buffers[i]);	
+		/*	
+		for (int j = 0; j < local_sizes[i+1]; j++) {
+			cout << "rank : " << rank << "buffers[i] : " << buffers[i] << endl;
+		}
+		*/
+	}
+	
+	
 	// Allocate a receive buffer in the main process
     char* receivedBuffer = nullptr;
     if (rank == 0) {
@@ -178,27 +179,33 @@ int main(int argc, char *argv[])
     }
 	
 	//Merging buffers :
-	int merged_size = local_size1 + local_size2;
+	int merged_size = 0;
+	for (int i = 0; i < NB_TRAJECTORIES; i++){
+		merged_size += local_sizes[i+1];
+	}
 	char* merged_buffer = new char[merged_size];
-	memcpy(merged_buffer, buffer1, local_size1);
-	memcpy(merged_buffer + local_size1, buffer2, local_size2);
-
+	int cumul = 0;
+	for (int i = 0; i < NB_TRAJECTORIES; i++){		
+		memcpy(merged_buffer + cumul, buffers[i], local_sizes[i+1]);
+		cumul += local_sizes[i+1];
+	}
+	
 	MPI_Gatherv(merged_buffer, merged_size, MPI_CHAR, receivedBuffer, merged_sizes, displacements, MPI_CHAR, 0, MPI_COMM_WORLD);
-		
+	
 	if (rank == 0){	
 		char* bufferPtr = receivedBuffer;
 		for (int i = 0; i < NB_PROCESSES; ++i) {
-			cout << "Process n " << i << " : " << endl;			
+			cout << "Process n " << i << " : " << endl;					
 			for (int j = 0; j < size_trajectories[i].nb_trajectories; j++){				
-				Trajectory trajectory_end;				
-				srlz.deserialize(bufferPtr, trajectory_end);		
-				bufferPtr += size_trajectories[i].trajectory_sizes[j];				
-				cout << trajectory_end << endl;				
-			}
-		}
+				Trajectory trajectory_end;							
+				srlz.deserialize(bufferPtr, trajectory_end);						
+				bufferPtr += size_trajectories[i].trajectory_sizes[j];								
+				cout << trajectory_end << endl;							
+			}			
+		}		
 	}
-		
-	*/
+	
+	
 	MPI_Finalize();
 	
 	return 0;

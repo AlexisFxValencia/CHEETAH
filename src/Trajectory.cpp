@@ -27,10 +27,10 @@ void Trajectory::modify(int myrank){
 
 // Display Trajectory
 ostream& operator<<(ostream& out, const Trajectory& t)
-{
-	out << "rank = " << t.rank << endl;
-	for (auto& i : t.trajectory){
-		out << "3Vector : " << i;
+{	
+	out << "Trajectory with process rank = " << t.rank << endl;
+	for (int i = 0; i < t.trajectory.size(); i++){
+		out << "Neutron Position n° " << i << " : " << t.trajectory[i];
 	}
 	
 	return out;
