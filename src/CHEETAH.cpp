@@ -39,7 +39,10 @@ int main(int argc, char *argv[])
 	Trajectory trajectory1;
 	trajectory1.modify(rank);
 	Trajectory trajectory2;
-	trajectory2.modify(rank);
+	trajectory2.modify(rank*100);
+	trajectory2.rank = rank;
+	Vector3 neutron_position = Vector3(1,2,3);
+	trajectory2.trajectory.push_back(neutron_position);
 	
 	Serializer srlz = Serializer();
 	int local_size1 = srlz.calculateSerializedSize(trajectory1);
