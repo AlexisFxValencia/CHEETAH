@@ -14,8 +14,7 @@ struct SizeTrajectories{
 		cout << "nb_trajectories for this batch = "<< this->nb_trajectories << endl;
 		for (int i = 0; i < this->nb_trajectories; i++){
 			cout << "trajectory size in bytes of n°" << i << "  : " << this->trajectory_sizes[i] << endl;
-		}		
-
+		}	
 	}
 };
 
@@ -34,40 +33,83 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &NB_PROCESSES);
 
-	int NB_TRAJECTORIES = 2;
-	
-	Trajectory trajectory1;
-	trajectory1.modify(rank);
-	Trajectory trajectory2;
-	trajectory2.modify(rank*100);
-	trajectory2.rank = rank;
-	Vector3 neutron_position = Vector3(1,2,3);
-	trajectory2.trajectory.push_back(neutron_position);
-	
-	Serializer srlz = Serializer();
-	int local_size1 = srlz.calculateSerializedSize(trajectory1);
-	int local_size2 = srlz.calculateSerializedSize(trajectory2);
+	int NB_SOURCES = 9;
+	int NB_TRAJECTORIES = NB_SOURCES/NB_PROCESSES;
+	if (rank == 0){
+		NB_TRAJECTORIES+= NB_SOURCES%NB_PROCESSES;
+	}
+	//cout << "rank : " << rank << " NB_TRAJECTORIES : "<< NB_TRAJECTORIES << endl;
 
-	char* buffer1 = new char[local_size1];
-	srlz.serialize(trajectory1, buffer1);
-	char* buffer2 = new char[local_size2];
-	srlz.serialize(trajectory2, buffer2);
-	
-	//Trajectory trajectory_end;
-	//srlz.deserialize(buffer, trajectory_end);
-	
+	Trajectory trajectories[NB_TRAJECTORIES];
+	for (int i = 0; i < NB_TRAJECTORIES; i++){
+		Trajectory trajectory;
+		trajectory.modify(rank);
+		trajectories[i] = trajectory;
+	}
+
+
+	Serializer srlz = Serializer();
 	
 	// Gather the sizes of local trajectories on all processes
 	int local_sizes[NB_TRAJECTORIES+1];
 	local_sizes[0] = NB_TRAJECTORIES;
-	local_sizes[1] = local_size1;
-	local_sizes[2] = local_size2;
-	int matrix_size = NB_PROCESSES*(NB_TRAJECTORIES+1);
+	for (int i = 0; i < NB_TRAJECTORIES; i++){
+		local_sizes[i+1] = srlz.calculateSerializedSize(trajectories[i]);
+	}
+	
+	/*
+	if (rank == 0){
+		for (int i = 0; i < NB_TRAJECTORIES+1; i++){
+			cout << "rank : " << rank << "local_sizes[i]  : " << local_sizes[i] << endl;
+		}
+	}
+	*/
+	int recvcounts[NB_PROCESSES];
+	if(rank == 0){
+		recvcounts[0] = (NB_SOURCES / NB_PROCESSES) + (NB_SOURCES % NB_PROCESSES);
+		recvcounts[0] += 1;
+		for (int i = 1; i < NB_PROCESSES; i++){
+			recvcounts[i] = NB_SOURCES / NB_PROCESSES;
+			recvcounts[i] += 1;
+		}
+	}
+	
+	int displs[NB_PROCESSES];	
+	if (rank == 0){
+		int sum = 0;
+		for (int j = 0; j < NB_PROCESSES; j++){
+			displs[j] = sum;
+			sum += recvcounts[j];
+		}
+		/*
+		for (int l=0; l< NB_PROCESSES; l++){
+			cout << displs[l] << endl;
+		}
+		*/
+	}
+	
+
+
+	
+	int matrix_size = NB_SOURCES + NB_PROCESSES;
     int batch_sizes[matrix_size];
-    MPI_Gather(&local_sizes, 1*(NB_TRAJECTORIES+1), MPI_INT, batch_sizes, 1*(NB_TRAJECTORIES+1), MPI_INT, 0, MPI_COMM_WORLD);
+	//cout << rank << " NB_TRAJECTORIES : " << NB_TRAJECTORIES << endl;
+    MPI_Gatherv(&local_sizes, NB_TRAJECTORIES+1, MPI_INT, batch_sizes, recvcounts, displs, MPI_INT, 0, MPI_COMM_WORLD);
 
-
+	
 	SizeTrajectories size_trajectories[NB_PROCESSES];
+	
+	
+	if (rank == 0){
+		for (int i = 0; i<10; i++){
+			cout << batch_sizes[i] << endl;
+		}
+	}
+	
+	
+	
+	
+	
 	if (rank == 0) {		
 		int matrix_index = 0;
 		int process_rank = 0;
@@ -85,7 +127,16 @@ int main(int argc, char *argv[])
 		}
 	}
 	
+	if (rank == 0){
+		for (int i = 0; i < NB_PROCESSES; i++){
+			size_trajectories[i].display();
+		}
+	}
+	cout << endl;
 
+	
+	
+	
 	int merged_sizes[NB_PROCESSES];
 	int total_size = 0;
 	if (rank ==0){
@@ -107,6 +158,17 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	/*
+	
+
+	char* buffer1 = new char[local_size1];
+	srlz.serialize(trajectory1, buffer1);
+	char* buffer2 = new char[local_size2];
+	srlz.serialize(trajectory2, buffer2);
+	
+	//Trajectory trajectory_end;
+	//srlz.deserialize(buffer, trajectory_end);
+	
 	
 
 	// Allocate a receive buffer in the main process
@@ -136,6 +198,7 @@ int main(int argc, char *argv[])
 		}
 	}
 		
+	*/
 	MPI_Finalize();
 	
 	return 0;
