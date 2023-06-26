@@ -15,10 +15,9 @@ int main(int argc, char *argv[])
 	trajectory.modify(rank);
 	
 	Serializer srlz = Serializer();
-	int serializedSize = srlz.calculateSerializedSize(trajectory);
-	int local_size = serializedSize;
+	int local_size = srlz.calculateSerializedSize(trajectory);
 
-	char* buffer = new char[serializedSize];
+	char* buffer = new char[local_size];
 	srlz.serialize(trajectory, buffer);
 	
 	Trajectory trajectory_end;
